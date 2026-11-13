@@ -82,3 +82,19 @@ class Trace:
     @classmethod
     def from_json(cls, s: str) -> "Trace":
         return cls.from_dict(json.loads(s))
+
+
+def nest_sub_trace(parent: Trace, call_id: str, child: Trace) -> bool:
+    """Attach `child` as a nested sub-agent trace under the parent event
+    (tool_call/tool_result) whose `call_id` matches. Returns True if attached.
+
+    This is the agent-neutral nesting mechanism: whoever orchestrates a
+    sub-agent (the host, or the Codex auto-linker) captures the child Trace
+    and hangs it on the delegating call. Stored as a dict so the whole
+    parent stays JSON-serializable."""
+    for turn in parent.turns:
+        for ev in turn.events:
+            if ev.type in ("tool_call", "tool_result") and ev.data.get("call_id") == call_id:
+                ev.data["sub_trace"] = child.to_dict()
+                return True
+    return False

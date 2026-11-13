@@ -91,6 +91,9 @@
             font-size:13px; font-weight:500; color:var(--fg); white-space:pre-wrap;
             background:var(--bg); border:1px solid var(--line); border-radius:6px;
             padding:9px; margin:6px 0 0; max-height:320px; overflow:auto; }
+  .subtrace { margin-top:10px; padding:8px 10px 2px; border:1px dashed var(--line);
+              border-radius:8px; }
+  .sublabel { font-size:12px; font-weight:700; color:var(--thought); margin-bottom:6px; }
   .diff-col { display:inline-block; vertical-align:top; width:49%; }
   .diff-add { background:rgba(34,197,94,0.18); }
   .diff-del { background:rgba(239,68,68,0.18); }
@@ -184,6 +187,14 @@ function resultLabel(d) {
   return (code !== undefined && code !== null) ? "결과 (exit " + code + ")" : "결과";
 }
 
+function appendSubTrace(node, sub) {
+  const wrap = el("div", "subtrace");
+  wrap.appendChild(el("div", "sublabel",
+    "↳ 서브에이전트" + (sub.run_id ? " (" + sub.run_id + ")" : "")));
+  renderTurns(sub.turns || [], wrap);
+  node.appendChild(wrap);
+}
+
 function renderFlow(events) {
   const flow = el("div", "flow");
 
@@ -220,11 +231,13 @@ function renderFlow(events) {
         node.appendChild(outputBlock(resultLabel(nd), nd.output || ""));
         consumed.add(paired);
       }
+      if (d.sub_trace) appendSubTrace(node, d.sub_trace);
       flow.appendChild(node);
     } else if (ev.type === "tool_result") {
       if (consumed.has(ev)) continue;               // already shown under its call
       const node = el("div", "node action");
       node.appendChild(outputBlock(resultLabel(d), d.output || ""));
+      if (d.sub_trace) appendSubTrace(node, d.sub_trace);
       flow.appendChild(node);
     } else if (ev.type === "error") {
       if (consumed.has(ev)) continue;               // shown under its tool call
@@ -240,6 +253,19 @@ function renderFlow(events) {
     }
   }
   return flow;
+}
+
+function renderTurns(turns, container) {
+  (turns || []).forEach(function (turn) {
+    const block = el("section", "turn");
+    const head = el("div", "turn-head", "Turn " + turn.seq);
+    head.addEventListener("click", function () { block.classList.toggle("collapsed"); });
+    block.appendChild(head);
+    const hasReasoning = (turn.events || []).some(function (e) { return e.type === "reasoning"; });
+    if (!hasReasoning) block.appendChild(el("div", "notice", "추론 요약 없음"));
+    block.appendChild(renderFlow(turn.events || []));
+    container.appendChild(block);
+  });
 }
 
 function renderTrace(trace) {
@@ -270,16 +296,7 @@ function renderTrace(trace) {
   sd.appendChild(seedBlock("user", seed.user_input || ""));
   tl.appendChild(sd);
 
-  (trace.turns || []).forEach(function (turn) {
-    const block = el("section", "turn");
-    const head = el("div", "turn-head", "Turn " + turn.seq);
-    head.addEventListener("click", function () { block.classList.toggle("collapsed"); });
-    block.appendChild(head);
-    const hasReasoning = (turn.events || []).some(function (e) { return e.type === "reasoning"; });
-    if (!hasReasoning) block.appendChild(el("div", "notice", "추론 요약 없음"));
-    block.appendChild(renderFlow(turn.events || []));
-    tl.appendChild(block);
-  });
+  renderTurns(trace.turns || [], tl);
 }
 
 renderTrace(TRACE);
