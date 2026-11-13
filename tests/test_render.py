@@ -40,6 +40,28 @@ def test_render_shows_no_reasoning_notice():
     assert "추론 요약 없음" in render(tr)
 
 
+def _trace_with_user_input(u):
+    return Trace(run_id="r", agent="codex",
+                 seed={"system_prompt": None, "user_input": u}, turns=[],
+                 incomplete=False)
+
+
+def test_render_with_compare_includes_diff_panel_in_same_page():
+    a = _trace_with_user_input("find the bug\nbe careful")
+    b = _trace_with_user_input("find the bug\nbe very careful")
+    html = render(a, compare_to=b)
+    assert "프롬프트 변경점" in html                       # diff panel heading
+    assert 'class="diff-add"' in html and 'class="diff-del"' in html
+    assert "renderFlow" in html                            # same page still has the timeline
+    assert "__DIFF_PANEL__" not in html
+
+
+def test_render_without_compare_has_no_diff_panel():
+    html = render(_sample_trace())
+    assert "프롬프트 변경점" not in html
+    assert "__DIFF_PANEL__" not in html
+
+
 def test_render_has_flow_spine_and_summary():
     # the viewer builds DOM client-side, so check the static markers:
     html = render(_sample_trace())

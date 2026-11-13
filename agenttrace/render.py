@@ -16,30 +16,42 @@ from agenttrace.model import Trace
 
 _TEMPLATE = Path(__file__).parent / "viewer" / "template.html"
 _PLACEHOLDER = "__TRACE_JSON__"
+_DIFF_SLOT = "__DIFF_PANEL__"
 
 
 def _embed(trace: Trace) -> str:
     return trace.to_json().replace("<", "\\u003c")
 
 
-def render(trace: Trace) -> str:
+def render(trace: Trace, *, compare_to: Trace | None = None) -> str:
+    """Render the full trace timeline as one self-contained HTML page. When
+    `compare_to` is given, a collapsible "프롬프트 변경점" (prompt diff) panel
+    against that trace is embedded at the top of the SAME page."""
     template = _TEMPLATE.read_text(encoding="utf-8")
-    return template.replace(_PLACEHOLDER, _embed(trace))
+    panel = _diff_panel(compare_to, trace) if compare_to is not None else ""
+    return template.replace(_DIFF_SLOT, panel).replace(_PLACEHOLDER, _embed(trace))
 
 
-def render_to_file(trace: Trace, path: str) -> None:
-    Path(path).write_text(render(trace), encoding="utf-8")
+def render_to_file(trace: Trace, path: str, *, compare_to: Trace | None = None) -> None:
+    Path(path).write_text(render(trace, compare_to=compare_to), encoding="utf-8")
 
 
 def render_iframe(trace: Trace, *, height: str = "600px",
-                  title: str = "agenttrace") -> str:
+                  title: str = "agenttrace", compare_to: Trace | None = None) -> str:
     """Return a ready-to-embed `<iframe srcdoc=...>` snippet for dropping the
     trace into one panel of a host web dashboard. The full self-contained
     document is HTML-escaped into the `srcdoc` attribute, so it is style- and
-    script-isolated from the host page and needs no separate file."""
-    doc = html.escape(render(trace), quote=True)
+    script-isolated from the host page and needs no separate file. `compare_to`
+    adds the prompt-diff panel in the same embedded page."""
+    doc = html.escape(render(trace, compare_to=compare_to), quote=True)
     return ('<iframe title="%s" style="width:100%%;height:%s;border:0" '
             'srcdoc="%s"></iframe>' % (html.escape(title, quote=True), height, doc))
+
+
+def _diff_panel(trace_a: Trace, trace_b: Trace) -> str:
+    """A collapsible prompt-diff fragment for embedding inside the trace page."""
+    return ('<details class="diffpanel" open><summary>프롬프트 변경점</summary>'
+            '<div class="cols">%s</div></details>' % _diff_body(trace_a, trace_b))
 
 
 _DIFF_DOC = """<!doctype html>
@@ -84,7 +96,7 @@ def _column(title: str, lines: list[tuple[str, str]]) -> str:
     return '<div class="diff-col"><h3>%s</h3>%s</div>' % (html.escape(title), rows)
 
 
-def diff(trace_a: Trace, trace_b: Trace) -> str:
+def _diff_body(trace_a: Trace, trace_b: Trace) -> str:
     la, lb = _seed_lines(trace_a), _seed_lines(trace_b)
     left: list[tuple[str, str]] = []
     right: list[tuple[str, str]] = []
@@ -99,5 +111,9 @@ def diff(trace_a: Trace, trace_b: Trace) -> str:
         elif tag == "replace":
             left += [("diff-del", la[k]) for k in range(i1, i2)]
             right += [("diff-add", lb[k]) for k in range(j1, j2)]
-    body = _column("A", left) + _column("B", right)
-    return _DIFF_DOC.replace("__DIFF_BODY__", body)
+    return _column("A", left) + _column("B", right)
+
+
+def diff(trace_a: Trace, trace_b: Trace) -> str:
+    """Standalone self-contained prompt-diff page (A vs B seed prompts)."""
+    return _DIFF_DOC.replace("__DIFF_BODY__", _diff_body(trace_a, trace_b))
