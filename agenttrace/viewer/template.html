@@ -30,8 +30,12 @@
   .incomplete { color:var(--error); font-weight:700; }
   main { max-width:860px; margin:0 auto; padding:16px; }
   details.seed { margin-bottom:14px; }
-  details.seed pre { white-space:pre-wrap; background:var(--card); padding:10px;
-                     border:1px solid var(--line); border-radius:6px; }
+  details.seed > summary { cursor:pointer; font-weight:600; }
+  .seedblock { background:var(--card); border:1px solid var(--line); border-radius:6px;
+               padding:9px 11px; margin-top:8px; }
+  .seedlabel { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+               color:var(--answer); margin-bottom:4px; }
+  .md { color:var(--fg); }
   .turn { margin:14px 0; }
   .turn-head { font-weight:700; cursor:pointer; user-select:none; padding:6px 0;
                border-bottom:1px solid var(--line); }
@@ -43,15 +47,28 @@
   .flow { position:relative; margin:10px 0 0; padding-left:34px; }
   .flow::before { content:""; position:absolute; left:15px; top:4px; bottom:4px;
                   width:2px; background:var(--line); }
-  .node { position:relative; margin:0 0 14px; }
+  /* each step is a bordered card (a clear "cell") with a type-colored accent */
+  .node { position:relative; margin:0 0 12px; padding:9px 12px 10px;
+          background:var(--card); border:1px solid var(--line);
+          border-left:4px solid var(--muted); border-radius:8px; }
   .node:last-child { margin-bottom:4px; }
-  .node .dot { position:absolute; left:-27px; top:3px; width:16px; height:16px;
+  .node .dot { position:absolute; left:-27px; top:12px; width:14px; height:14px;
                border-radius:50%; background:var(--bg); border:3px solid var(--muted); }
-  .node.thought .dot { border-color:var(--thought); }
-  .node.answer  .dot { border-color:var(--answer); }
-  .node.comment .dot { border-color:var(--comment); }
-  .node.action  .dot { border-color:var(--tool); }
+  .node.thought { border-left-color:var(--thought); } .node.thought .dot { border-color:var(--thought); }
+  .node.answer  { border-left-color:var(--answer); }  .node.answer  .dot { border-color:var(--answer); }
+  .node.comment { border-left-color:var(--comment); } .node.comment .dot { border-color:var(--comment); }
+  .node.action  { border-left-color:var(--tool); }    .node.action  .dot { border-color:var(--tool); }
+  .node.action.err, .node.error { border-left-color:var(--error); }
   .node.action.err .dot, .node.error .dot { border-color:var(--error); }
+
+  /* lightweight markdown styling for prompt/reasoning text */
+  .md-h { font-weight:700; font-size:1.02em; margin:5px 0 2px; }
+  .md-li { padding-left:15px; text-indent:-9px; }
+  .md-li::before { content:"\2022 "; color:var(--muted); }
+  .md-sp { height:7px; }
+  code.code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.9em;
+              background:var(--line); color:var(--tool); padding:1px 5px; border-radius:4px; }
+  .link { color:var(--answer); text-decoration:underline; }
   .badge { display:inline-block; font-size:11px; font-weight:700; padding:1px 8px;
            border-radius:999px; color:#fff; margin-bottom:5px; }
   .b-thought { background:var(--thought); }
@@ -60,7 +77,7 @@
   .b-tool    { background:var(--tool); }
   .b-error   { background:var(--error); }
   .b-meta    { background:var(--muted); }
-  .text { white-space:pre-wrap; }
+  .text { color:var(--fg); }
   .muted { color:var(--muted); }
   .notice { color:var(--muted); font-style:italic; margin:4px 0 10px; }
   .cmd { font-family:ui-monospace,monospace; background:var(--card);
@@ -90,6 +107,45 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+// --- lightweight, safe markdown (inline code / bold / links / headings / bullets)
+function mdInline(parent, text) {
+  const re = /(`[^`]+`)|(\*\*[^*]+\*\*)|(\[[^\]]+\]\([^)]+\))/g;
+  let last = 0, m;
+  while ((m = re.exec(text))) {
+    if (m.index > last) parent.appendChild(document.createTextNode(text.slice(last, m.index)));
+    const tok = m[0];
+    if (tok[0] === "`") {
+      parent.appendChild(el("code", "code", tok.slice(1, -1)));
+    } else if (tok.slice(0, 2) === "**") {
+      parent.appendChild(el("strong", null, tok.slice(2, -2)));
+    } else {
+      const mt = /\[([^\]]+)\]\(([^)]+)\)/.exec(tok);
+      parent.appendChild(el("span", "link", mt[1]));   // text only, not clickable
+    }
+    last = re.lastIndex;
+  }
+  if (last < text.length) parent.appendChild(document.createTextNode(text.slice(last)));
+}
+function mdInto(parent, text) {
+  (text || "").split("\n").forEach(function (line) {
+    let m;
+    if ((m = /^(#{1,6})\s+(.*)$/.exec(line))) {
+      const h = el("div", "md-h"); mdInline(h, m[2]); parent.appendChild(h); return;
+    }
+    if (/^\s*[-*]\s+/.test(line)) {
+      const li = el("div", "md-li"); mdInline(li, line.replace(/^\s*[-*]\s+/, "")); parent.appendChild(li); return;
+    }
+    if (line.trim() === "") { parent.appendChild(el("div", "md-sp")); return; }
+    const d = document.createElement("div"); mdInline(d, line); parent.appendChild(d);
+  });
+}
+function seedBlock(label, text) {
+  const w = el("div", "seedblock");
+  w.appendChild(el("div", "seedlabel", label));
+  const b = el("div", "md"); mdInto(b, text); w.appendChild(b);
+  return w;
+}
+
 function pill(label, n) {
   const p = el("span", "pill");
   p.appendChild(el("span", null, label + " "));
@@ -98,7 +154,9 @@ function pill(label, n) {
 }
 function card(node, badgeCls, badgeText, bodyText) {
   node.appendChild(el("span", "badge " + badgeCls, badgeText));
-  if (bodyText != null) node.appendChild(el("div", "text", bodyText));
+  if (bodyText != null) {
+    const b = el("div", "text"); mdInto(b, bodyText); node.appendChild(b);
+  }
   return node;
 }
 function outputBlock(label, text) {
@@ -204,8 +262,8 @@ function renderTrace(trace) {
   const sd = document.createElement("details");
   sd.className = "seed";
   sd.appendChild(el("summary", null, "seed 프롬프트"));
-  if (seed.system_prompt) sd.appendChild(el("pre", null, "system:\n" + seed.system_prompt));
-  sd.appendChild(el("pre", null, "user:\n" + (seed.user_input || "")));
+  if (seed.system_prompt) sd.appendChild(seedBlock("system", seed.system_prompt));
+  sd.appendChild(seedBlock("user", seed.user_input || ""));
   tl.appendChild(sd);
 
   (trace.turns || []).forEach(function (turn) {

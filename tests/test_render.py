@@ -46,6 +46,8 @@ def test_render_has_flow_spine_and_summary():
     assert 'id="summary"' in html      # top summary bar element
     assert '.flow' in html             # vertical flow-spine styles
     assert 'renderFlow' in html        # flow builder present
+    assert 'mdInto' in html            # lightweight markdown highlighter
+    assert 'border-left' in html       # carded cells with a colored accent
 
 
 def test_render_to_file_is_utf8(tmp_path):
