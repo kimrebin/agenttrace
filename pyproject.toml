@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agenttrace"
+version = "0.1.0"
+description = "Capture and view an agent's reasoning + tool trace for prompt debugging"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+agenttrace = "agenttrace.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agenttrace*"]
+
+[tool.setuptools.package-data]
+agenttrace = ["viewer/template.html"]
