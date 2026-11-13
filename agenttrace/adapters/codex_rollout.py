@@ -46,15 +46,30 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
         payload = obj.get("payload", {}) or {}
 
         if ttype == "session_meta":
-            trace.run_id = payload.get("session_id")
+            trace.run_id = payload.get("session_id") or payload.get("id")
             bi = payload.get("base_instructions")
             trace.seed["system_prompt"] = bi.get("text") if isinstance(bi, dict) else bi
             continue
+        if ttype == "turn_context":
+            continue  # per-turn config, not a visible event
 
         ptype = payload.get("type")
         if ptype == "agent_message":
             add("reasoning", {"text": payload.get("message", ""),
                               "role": "agent_message"})
+        elif ptype == "user_message":
+            if not trace.seed.get("user_input"):
+                trace.seed["user_input"] = payload.get("message", "")
+        elif ptype == "message":
+            # response_item message: role-tagged, text split across content[]
+            role = payload.get("role")
+            text = _message_text(payload)
+            if role == "assistant":
+                add("reasoning", {"text": text, "role": "assistant"})
+            elif role == "user":
+                if not trace.seed.get("user_input"):
+                    trace.seed["user_input"] = text
+            # developer/system/tool roles are instruction boilerplate — skip
         elif ptype == "function_call":
             add("tool_call", {"name": payload.get("name", ""),
                               "arguments": payload.get("arguments", "")})
@@ -66,7 +81,17 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
                 add("meta", {"note": "reasoning encrypted — unavailable in rollout"},
                     raw=obj)
                 noted_encrypted = True
+        elif ptype in ("token_count", "task_started", "task_complete"):
+            continue  # bookkeeping noise
         else:
-            add("unknown", {}, raw=obj)
+            add("unknown", {"item_type": ptype}, raw=obj)
 
     return trace
+
+
+def _message_text(payload: dict) -> str:
+    parts = []
+    for chunk in payload.get("content", []) or []:
+        if isinstance(chunk, dict) and chunk.get("text"):
+            parts.append(chunk["text"])
+    return "\n".join(parts)
