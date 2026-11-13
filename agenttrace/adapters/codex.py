@@ -115,18 +115,37 @@ def parse_stream(lines: Iterable[str], *, user_input: str | None = None,
 
 
 def load(path: str, *, user_input: str | None = None,
-         system_prompt: str | None = None) -> Trace:
+         system_prompt: str | None = None, link_subagents: bool = False,
+         sessions_dir: str | None = None) -> Trace:
     """Load a saved Codex trace file, auto-detecting the format: a rollout
     file (lines carry a `payload` key) is replayed post-hoc; otherwise the
-    file is a saved `--json` stream."""
-    from agenttrace.adapters.codex_rollout import parse_rollout
+    file is a saved `--json` stream.
+
+    With `link_subagents=True`, Codex sub-agent delegations are resolved by
+    finding each child thread's own rollout under `sessions_dir` (inferred
+    from `path` when not given) and nesting it."""
+    from agenttrace.adapters.codex_rollout import parse_rollout, link_sub_agents
 
     with open(path, encoding="utf-8") as f:
         lines = f.readlines()
 
     if _looks_like_rollout(lines):
-        return parse_rollout(lines)
+        trace = parse_rollout(lines)
+        if link_subagents:
+            link_sub_agents(trace, sessions_dir or _infer_sessions_dir(path))
+        return trace
     return parse_stream(lines, user_input=user_input, system_prompt=system_prompt)
+
+
+def _infer_sessions_dir(path: str) -> str:
+    """The sessions root to search for sibling sub-agent threads: the nearest
+    ancestor named 'sessions', else the file's own directory."""
+    import os
+    p = os.path.abspath(path)
+    parts = p.split(os.sep)
+    if "sessions" in parts:
+        return os.sep.join(parts[:parts.index("sessions") + 1])
+    return os.path.dirname(p)
 
 
 def _looks_like_rollout(lines: Iterable[str]) -> bool:

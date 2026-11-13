@@ -72,6 +72,7 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
     trace.turns.append(turn)
     state = {"n": 0, "noted_encrypted": False}
     seen_text: set[str] = set()
+    sub_seen: set[str] = set()
 
     def add(type: str, data: dict, raw: dict | None = None) -> None:
         turn.events.append(Event(id=f"e{state['n']}", type=type, timestamp=None,
@@ -136,6 +137,18 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
             add("tool_call", {"name": "extension:" + str(it.get("kind")),
                               "arguments": it.get("query", ""), "call_id": cid})
             add("tool_result", {"output": out, "call_id": cid})
+        elif t == "SubAgentActivity":
+            # delegation to a sub-agent that runs in a separate thread/session;
+            # one tool_call per child thread (call_id = child thread id) so a
+            # linker can hang the child's trace under it.
+            cid = it.get("agent_thread_id")
+            if it.get("kind") == "started" and cid and cid not in sub_seen:
+                sub_seen.add(cid)
+                path = it.get("agent_path") or ""
+                add("tool_call", {"name": "sub_agent:" + str(path),
+                                  "arguments": str(path), "call_id": cid})
+        elif t == "CollabAgentToolCall":
+            add("meta", {"note": "collab: " + str(it.get("tool") or "")}, raw={"item": it})
         else:
             add("unknown", {"item_type": t}, raw={"item": it})
 
@@ -217,3 +230,59 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
             add("unknown", {"item_type": ptype}, raw=o)
 
     return trace
+
+
+def parse_rollout_file(path: str) -> Trace:
+    with open(path, encoding="utf-8") as f:
+        return parse_rollout(f)
+
+
+def _first_session_id(path: str) -> str | None:
+    """The thread id a rollout file belongs to (session_meta.id, which for a
+    sub-agent file is the child thread id)."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                o = json.loads(line)
+                if o.get("type") == "session_meta":
+                    return (o.get("payload") or {}).get("id")
+                return None
+    except (OSError, ValueError):
+        return None
+    return None
+
+
+def _index_sessions(sessions_dir: str) -> dict:
+    import glob
+    import os
+    index = {}
+    for fp in glob.glob(os.path.join(sessions_dir, "**", "*.jsonl"), recursive=True):
+        tid = _first_session_id(fp)
+        if tid and tid not in index:
+            index[tid] = fp
+    return index
+
+
+def link_sub_agents(trace: Trace, sessions_dir: str) -> Trace:
+    """Resolve Codex sub-agent delegations: each `sub_agent:*` tool_call whose
+    call_id is a child thread id is linked to that child's rollout (found in
+    `sessions_dir` by session id) and nested as a sub_trace. Recurses into
+    grandchildren; a visited set guards against cycles."""
+    index = _index_sessions(sessions_dir)
+    _link(trace, index, set())
+    return trace
+
+
+def _link(trace: Trace, index: dict, visited: set) -> None:
+    for turn in trace.turns:
+        for ev in turn.events:
+            if ev.type == "tool_call" and str(ev.data.get("name", "")).startswith("sub_agent"):
+                cid = ev.data.get("call_id")
+                if cid and cid in index and cid not in visited:
+                    visited.add(cid)
+                    child = parse_rollout_file(index[cid])
+                    _link(child, index, visited)
+                    ev.data["sub_trace"] = child.to_dict()
