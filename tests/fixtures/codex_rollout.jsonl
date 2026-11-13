@@ -1,0 +1,5 @@
+{"timestamp":"2026-07-24T09:59:32Z","type":"session_meta","payload":{"session_id":"019f938e","cwd":"D:/x","cli_version":"0.142.5","base_instructions":{"text":"You are Codex, a coding agent."}}}
+{"timestamp":"2026-07-24T09:59:40Z","type":"response_item","payload":{"type":"reasoning","summary":[],"encrypted_content":"gAAAAAB_encrypted_blob=="}}
+{"timestamp":"2026-07-24T09:59:41Z","type":"event_msg","payload":{"type":"agent_message","message":"I'll list the files.","phase":"commentary"}}
+{"timestamp":"2026-07-24T09:59:42Z","type":"response_item","payload":{"type":"function_call","id":"fc_1","name":"shell_command","arguments":"{\"command\":\"ls\"}","call_id":"call_1"}}
+{"timestamp":"2026-07-24T09:59:44Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_1","output":"Exit code: 0\nfile.txt"}}

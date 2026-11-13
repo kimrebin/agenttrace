@@ -104,7 +104,27 @@ def parse_stream(lines: Iterable[str], *, user_input: str | None = None,
 
 def load(path: str, *, user_input: str | None = None,
          system_prompt: str | None = None) -> Trace:
-    """Parse a saved `--json` stream file. (Task 4 extends this to also
-    auto-detect rollout files.)"""
+    """Load a saved Codex trace file, auto-detecting the format: a rollout
+    file (lines carry a `payload` key) is replayed post-hoc; otherwise the
+    file is a saved `--json` stream."""
+    from agenttrace.adapters.codex_rollout import parse_rollout
+
     with open(path, encoding="utf-8") as f:
-        return parse_stream(f, user_input=user_input, system_prompt=system_prompt)
+        lines = f.readlines()
+
+    if _looks_like_rollout(lines):
+        return parse_rollout(lines)
+    return parse_stream(lines, user_input=user_input, system_prompt=system_prompt)
+
+
+def _looks_like_rollout(lines: Iterable[str]) -> bool:
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except (ValueError, TypeError):
+            return False
+        return isinstance(obj, dict) and "payload" in obj
+    return False
