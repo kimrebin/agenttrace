@@ -6,20 +6,20 @@
 <title>agenttrace</title>
 <style>
   :root {
-    --bg:#ffffff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --card:#f9fafb;
-    --thought:#7c3aed; --answer:#2563eb; --comment:#0891b2; --tool:#d97706;
-    --result:#0f766e; --error:#dc2626;
+    --bg:#ffffff; --fg:#0b0e14; --muted:#4b5563; --line:#cbd1da; --card:#eef1f5;
+    --thought:#6d28d9; --answer:#1d4ed8; --comment:#0e7490; --tool:#b45309;
+    --result:#0f766e; --error:#b91c1c;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg:#0f1115; --fg:#e5e7eb; --muted:#9ca3af; --line:#26272b; --card:#16181d;
-      --thought:#a78bfa; --answer:#60a5fa; --comment:#22d3ee; --tool:#fbbf24;
-      --result:#5eead4; --error:#f87171;
+      --bg:#0d0f13; --fg:#f4f6f8; --muted:#aeb6c2; --line:#3a3d47; --card:#1b1e25;
+      --thought:#b794ff; --answer:#7cb0ff; --comment:#3ddbf0; --tool:#fbbf24;
+      --result:#5eead4; --error:#fb7185;
     }
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--fg);
-         font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  body { margin:0; background:var(--bg); color:var(--fg); font-weight:450;
+         font:450 15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
   header { padding:14px 16px; border-bottom:1px solid var(--line);
            position:sticky; top:0; background:var(--bg); z-index:5; }
   header h1 { margin:0; font-size:17px; }
@@ -35,7 +35,7 @@
                padding:9px 11px; margin-top:8px; }
   .seedlabel { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
                color:var(--answer); margin-bottom:4px; }
-  .md { color:var(--fg); }
+  .md { color:var(--fg); font-weight:500; }
   .turn { margin:14px 0; }
   .turn-head { font-weight:700; cursor:pointer; user-select:none; padding:6px 0;
                border-bottom:1px solid var(--line); }
@@ -77,7 +77,7 @@
   .b-tool    { background:var(--tool); }
   .b-error   { background:var(--error); }
   .b-meta    { background:var(--muted); }
-  .text { color:var(--fg); }
+  .text { color:var(--fg); font-weight:500; }
   .muted { color:var(--muted); }
   .notice { color:var(--muted); font-style:italic; margin:4px 0 10px; }
   .cmd { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;

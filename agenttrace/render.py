@@ -47,16 +47,23 @@ _DIFF_DOC = """<!doctype html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>agenttrace diff</title>
 <style>
-  body { margin: 0; background: #fff; color: #1a1a1a;
-         font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  @media (prefers-color-scheme: dark) { body { background: #0f1115; color: #e5e7eb; } }
+  body { margin: 0; background: #ffffff; color: #0b0e14;
+         font: 500 14px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  @media (prefers-color-scheme: dark) { body { background: #0d0f13; color: #f4f6f8; } }
   h1 { font-size: 18px; padding: 16px 16px 0; }
   .cols { display: flex; gap: 2%; padding: 16px; }
   .diff-col { width: 49%; }
-  .diff-col h3 { margin: 0 0 8px; font-size: 13px; color: #6b7280; }
-  .diff-col > div { white-space: pre-wrap; padding: 1px 4px; font-family: ui-monospace, monospace; }
-  .diff-add { background: rgba(34,197,94,0.20); }
-  .diff-del { background: rgba(239,68,68,0.20); }
+  .diff-col h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #4b5563; }
+  @media (prefers-color-scheme: dark) { .diff-col h3 { color: #aeb6c2; } }
+  .diff-col > div { white-space: pre-wrap; padding: 2px 5px; border-radius: 3px;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+                    font-size: 13px; font-weight: 500; }
+  .diff-add { background: rgba(22,163,74,0.30); }
+  .diff-del { background: rgba(220,38,38,0.30); }
+  @media (prefers-color-scheme: dark) {
+    .diff-add { background: rgba(34,197,94,0.32); }
+    .diff-del { background: rgba(248,113,113,0.32); }
+  }
 </style></head>
 <body><h1>seed 프롬프트 diff</h1><div class="cols">__DIFF_BODY__</div></body></html>"""
 
