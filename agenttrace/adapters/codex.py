@@ -64,6 +64,9 @@ class CodexStreamParser:
             self._turn_open = False
         elif etype == "item.completed":
             self._handle_item(obj.get("item", {}) or {})
+        elif etype == "item.started":
+            # streaming start half of an item.completed; ignore the duplicate
+            return
         # anything else: preserve without crashing
         else:
             self._add_event("meta", {"note": str(etype)}, raw=obj)
@@ -75,6 +78,14 @@ class CodexStreamParser:
         elif itype == "agent_message":
             self._add_event("reasoning",
                             {"text": item.get("text", ""), "role": "agent_message"})
+        elif itype == "command_execution":
+            # Codex combines call + result in one item; split into two events.
+            self._add_event("tool_call",
+                            {"name": "command_execution",
+                             "arguments": item.get("command", "")})
+            self._add_event("tool_result",
+                            {"output": item.get("aggregated_output", ""),
+                             "exit_code": item.get("exit_code")})
         else:
             self._add_event("unknown", {}, raw={"item": item})
 
