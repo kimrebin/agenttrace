@@ -25,12 +25,23 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
     trace.turns.append(turn)
     n = 0
     noted_encrypted = False
+    seen_text: set[str] = set()
 
     def add(type: str, data: dict, raw: dict | None = None) -> None:
         nonlocal n
         turn.events.append(Event(id=f"e{n}", type=type, timestamp=None,
                                  raw=raw, data=data))
         n += 1
+
+    def add_reasoning(text: str, role: str) -> None:
+        # Codex records each assistant utterance twice (event_msg agent_message
+        # AND response_item message/assistant); collapse the duplicate.
+        key = (text or "").strip()
+        if key and key in seen_text:
+            return
+        if key:
+            seen_text.add(key)
+        add("reasoning", {"text": text, "role": role})
 
     for line in lines:
         line = line.strip()
@@ -55,8 +66,7 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
 
         ptype = payload.get("type")
         if ptype == "agent_message":
-            add("reasoning", {"text": payload.get("message", ""),
-                              "role": "agent_message"})
+            add_reasoning(payload.get("message", ""), "agent_message")
         elif ptype == "user_message":
             if not trace.seed.get("user_input"):
                 trace.seed["user_input"] = payload.get("message", "")
@@ -65,7 +75,7 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
             role = payload.get("role")
             text = _message_text(payload)
             if role == "assistant":
-                add("reasoning", {"text": text, "role": "assistant"})
+                add_reasoning(text, "assistant")
             elif role == "user":
                 if not trace.seed.get("user_input"):
                     trace.seed["user_input"] = text

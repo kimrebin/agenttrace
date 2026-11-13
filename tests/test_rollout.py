@@ -19,6 +19,19 @@ def test_load_autodetects_stream_vs_rollout():
     assert stream.run_id == "01a1cec6-5f08-7152-a821-a9b8ef1a2ca4"
 
 
+def test_rollout_dedups_assistant_text_across_channels():
+    from agenttrace.adapters.codex_rollout import parse_rollout
+    lines = [
+        '{"type":"session_meta","payload":{"id":"x"}}',
+        '{"type":"event_msg","payload":{"type":"agent_message","message":"The answer is 42."}}',
+        '{"type":"response_item","payload":{"type":"message","role":"assistant",'
+        '"content":[{"type":"output_text","text":"The answer is 42."}]}}',
+    ]
+    tr = parse_rollout(lines)
+    texts = [e.data.get("text") for e in tr.turns[0].events if e.type == "reasoning"]
+    assert texts.count("The answer is 42.") == 1
+
+
 def test_rollout_real_schema_message_and_id():
     tr = load("tests/fixtures/codex_rollout_real.jsonl")
     assert tr.run_id == "019dfc8a-real"                      # session_meta.payload.id
