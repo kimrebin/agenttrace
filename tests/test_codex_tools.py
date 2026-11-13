@@ -23,6 +23,16 @@ def test_nonzero_exit_code_becomes_error_event():
     assert err.data["output"] == "boom" and err.data["exit_code"] == 1
 
 
+def test_stream_tool_events_share_call_id():
+    lines = ['{"type":"turn.started"}',
+             '{"type":"item.completed","item":{"id":"it5","type":"command_execution",'
+             '"command":"ls","aggregated_output":"x","exit_code":0}}']
+    tr = parse_stream(lines)
+    call = next(e for e in tr.turns[0].events if e.type == "tool_call")
+    res = next(e for e in tr.turns[0].events if e.type == "tool_result")
+    assert call.data["call_id"] == "it5" and res.data["call_id"] == "it5"
+
+
 def test_top_level_error_event_mapped():
     lines = ['{"type":"turn.started"}', '{"type":"error","message":"rate limited"}']
     tr = parse_stream(lines)

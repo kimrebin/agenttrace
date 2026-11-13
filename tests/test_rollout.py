@@ -32,6 +32,19 @@ def test_rollout_dedups_assistant_text_across_channels():
     assert texts.count("The answer is 42.") == 1
 
 
+def test_rollout_tool_events_carry_call_id():
+    from agenttrace.adapters.codex_rollout import parse_rollout
+    lines = ['{"type":"session_meta","payload":{"id":"x"}}',
+             '{"type":"response_item","payload":{"type":"function_call","name":"sh",'
+             '"arguments":"{}","call_id":"c9"}}',
+             '{"type":"response_item","payload":{"type":"function_call_output",'
+             '"call_id":"c9","output":"ok"}}']
+    tr = parse_rollout(lines)
+    call = next(e for e in tr.turns[0].events if e.type == "tool_call")
+    res = next(e for e in tr.turns[0].events if e.type == "tool_result")
+    assert call.data["call_id"] == "c9" and res.data["call_id"] == "c9"
+
+
 def test_rollout_real_schema_message_and_id():
     tr = load("tests/fixtures/codex_rollout_real.jsonl")
     assert tr.run_id == "019dfc8a-real"                      # session_meta.payload.id

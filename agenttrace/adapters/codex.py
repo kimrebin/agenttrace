@@ -81,21 +81,22 @@ class CodexStreamParser:
             self._add_event("reasoning",
                             {"text": item.get("text", ""), "role": "agent_message"})
         elif itype == "command_execution":
-            # Codex combines call + result in one item; split into two events.
+            # Codex combines call + result in one item; split into two events
+            # sharing the item id so the viewer can pair them by call_id.
+            cid = item.get("id")
             self._add_event("tool_call",
                             {"name": "command_execution",
-                             "arguments": item.get("command", "")})
+                             "arguments": item.get("command", ""),
+                             "call_id": cid})
             exit_code = item.get("exit_code")
             out = {"name": "command_execution",
                    "output": item.get("aggregated_output", ""),
-                   "exit_code": exit_code}
+                   "exit_code": exit_code, "call_id": cid}
             # a non-zero exit is a failure — surface it as an emphasized error
             if exit_code not in (None, 0):
                 self._add_event("error", out)
             else:
-                self._add_event("tool_result",
-                                {"output": item.get("aggregated_output", ""),
-                                 "exit_code": exit_code})
+                self._add_event("tool_result", out)
         else:
             self._add_event("unknown", {"item_type": item.get("type")},
                             raw={"item": item})

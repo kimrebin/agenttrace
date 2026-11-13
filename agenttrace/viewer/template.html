@@ -117,44 +117,61 @@ function reasoningKind(ev) {
   return ["thought", "b-thought", "요약"];        // CoT summary
 }
 
+function resultLabel(d) {
+  const code = (d || {}).exit_code;
+  return (code !== undefined && code !== null) ? "결과 (exit " + code + ")" : "결과";
+}
+
 function renderFlow(events) {
   const flow = el("div", "flow");
+
+  // Index tool results/errors by call_id so a call claims its output wherever
+  // it sits in the stream (in rollouts they are not adjacent).
+  const byCall = {};
+  events.forEach(function (e) {
+    const cid = (e.data || {}).call_id;
+    if (cid && (e.type === "tool_result" || e.type === "error") && !byCall[cid]) {
+      byCall[cid] = e;
+    }
+  });
+  const consumed = new Set();
+
   for (let i = 0; i < events.length; i++) {
     const ev = events[i];
+    const d = ev.data || {};
     if (ev.type === "reasoning") {
       const [cls, badge, label] = reasoningKind(ev);
-      flow.appendChild(card(el("div", "node " + cls), badge, label, (ev.data || {}).text || ""));
+      flow.appendChild(card(el("div", "node " + cls), badge, label, d.text || ""));
     } else if (ev.type === "tool_call") {
-      // pair a call with the result/error that immediately follows it
-      const next = events[i + 1];
-      const paired = next && (next.type === "tool_result" || next.type === "error");
-      const isErr = paired && next.type === "error";
+      // pair by call_id; fall back to the immediately following event
+      let paired = d.call_id ? byCall[d.call_id] : null;
+      if (!paired) {
+        const n = events[i + 1];
+        if (n && (n.type === "tool_result" || n.type === "error")) paired = n;
+      }
+      const isErr = paired && paired.type === "error";
       const node = el("div", "node action" + (isErr ? " err" : ""));
       node.appendChild(el("span", "badge b-tool", isErr ? "도구 (실패)" : "도구"));
-      const d = ev.data || {};
       node.appendChild(el("div", "cmd", (d.name || "") + " " + (d.arguments || "")));
       if (paired) {
-        const nd = next.data || {};
-        const code = nd.exit_code;
-        const label = (code !== undefined && code !== null)
-          ? "결과 (exit " + code + ")" : "결과";
-        node.appendChild(outputBlock(label, nd.output || ""));
-        i++; // consumed the paired event
+        const nd = paired.data || {};
+        node.appendChild(outputBlock(resultLabel(nd), nd.output || ""));
+        consumed.add(paired);
       }
       flow.appendChild(node);
     } else if (ev.type === "tool_result") {
+      if (consumed.has(ev)) continue;               // already shown under its call
       const node = el("div", "node action");
-      node.appendChild(outputBlock("도구 결과", (ev.data || {}).output || ""));
+      node.appendChild(outputBlock(resultLabel(d), d.output || ""));
       flow.appendChild(node);
     } else if (ev.type === "error") {
+      if (consumed.has(ev)) continue;               // shown under its tool call
       const node = el("div", "node error");
       node.appendChild(el("span", "badge b-error", "에러"));
-      const d = ev.data || {};
       node.appendChild(el("div", "text", d.message || d.output || JSON.stringify(d)));
       flow.appendChild(node);
     } else {
       const node = el("div", "node");
-      const d = ev.data || {};
       node.appendChild(el("span", "badge b-meta", d.item_type || ev.type));
       node.appendChild(el("div", "text muted", d.note || (ev.raw ? JSON.stringify(ev.raw) : "")));
       flow.appendChild(node);

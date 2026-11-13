@@ -82,9 +82,11 @@ def parse_rollout(lines: Iterable[str]) -> Trace:
             # developer/system/tool roles are instruction boilerplate — skip
         elif ptype == "function_call":
             add("tool_call", {"name": payload.get("name", ""),
-                              "arguments": payload.get("arguments", "")})
+                              "arguments": payload.get("arguments", ""),
+                              "call_id": payload.get("call_id")})
         elif ptype == "function_call_output":
-            add("tool_result", {"output": payload.get("output", "")})
+            add("tool_result", {"output": payload.get("output", ""),
+                                "call_id": payload.get("call_id")})
         elif ptype == "reasoning":
             # encrypted, empty summary — no readable CoT to recover
             if not noted_encrypted:
