@@ -51,6 +51,9 @@ agenttrace replay <session.jsonl> -o out.html
 # 트레이스 + 프롬프트 diff 패널을 한 페이지에
 agenttrace replay <session.jsonl> --compare <other.jsonl> -o out.html
 
+# 이전 세션(같은 프로젝트)과 자동 비교
+agenttrace replay <session.jsonl> --compare-prev -o out.html
+
 # Codex 서브에이전트 자식 세션까지 찾아 중첩
 agenttrace replay <session.jsonl> --link-subagents -o out.html
 
@@ -119,6 +122,17 @@ CLI로는 `agenttrace replay runA.jsonl --compare runB.jsonl -o out.html`.
 
 > 이건 **입력(seed) 프롬프트** diff입니다(시스템+유저, 라인 단위 add/del). 행동 trace diff는 아닙니다(v1 non-goal).
 
+### 이전 세션과 자동 비교
+비교 대상을 직접 고르는 대신, **같은 프로젝트(cwd)의 시간상 바로 이전 세션**을 자동으로 기준(A)으로 잡을 수 있습니다:
+```python
+prev = agenttrace.find_previous_session(cur_path)   # 없으면 None (sessions_dir 자동 추론)
+trace = agenttrace.load(cur_path)
+agenttrace.render_to_file(trace, "out.html",
+                          compare_to=agenttrace.load(prev) if prev else None)
+```
+CLI: `agenttrace replay <path> --compare-prev -o out.html`
+(다른 프로젝트까지 포함해 비교하려면 `find_previous_session(path, same_cwd=False)`.)
+
 ---
 
 ## 서브에이전트 중첩
@@ -140,6 +154,7 @@ agenttrace.nest_sub_trace(parent_trace, call_id, child_trace)
 - `Collector(agent="codex", *, user_input=None, system_prompt=None)` → `.feed(line)`, `.finish() -> Trace`
 - `run_codex(prompt, *, reasoning="detailed", model=None, launcher=...) -> Trace`
 - `load(path, *, user_input=None, system_prompt=None, link_subagents=False, sessions_dir=None) -> Trace`
+- `find_previous_session(path, *, sessions_dir=None, same_cwd=True) -> str | None` — 자동 비교용 직전 세션
 
 **렌더**
 - `render(trace, *, compare_to=None) -> str` — 자체완결 HTML(옵션: 프롬프트 diff 패널)
@@ -152,7 +167,7 @@ agenttrace.nest_sub_trace(parent_trace, call_id, child_trace)
 - `nest_sub_trace(parent, call_id, child) -> bool`
 
 **CLI** (`agenttrace <cmd>`)
-- `replay <path> -o <out> [--compare <path>] [--link-subagents]`
+- `replay <path> -o <out> [--compare <path>] [--compare-prev] [--link-subagents] [--sessions-dir <dir>]`
 - `diff <A> <B> -o <out>`
 - `run <prompt> -o <out>`
 
@@ -168,7 +183,7 @@ agenttrace.nest_sub_trace(parent_trace, call_id, child_trace)
 
 ## 개발
 ```bash
-python -m pytest -q      # 전체 테스트 (39개)
+python -m pytest -q      # 전체 테스트 (42개)
 ```
 구조:
 - `agenttrace/model.py` — Trace/Turn/Event + 직렬화 + `nest_sub_trace`

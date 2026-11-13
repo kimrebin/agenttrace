@@ -6,6 +6,7 @@ import argparse
 from pathlib import Path
 
 from agenttrace.adapters.codex import load
+from agenttrace.adapters.codex_rollout import find_previous_session
 from agenttrace.render import render_to_file, diff
 from agenttrace.runner import run_codex
 
@@ -19,8 +20,12 @@ def main(argv: list[str] | None = None) -> int:
     p_replay.add_argument("-o", "--out", required=True)
     p_replay.add_argument("--compare", default=None,
                           help="another session file; adds a prompt-diff panel vs this trace")
+    p_replay.add_argument("--compare-prev", action="store_true",
+                          help="auto-compare against the previous session (same project/cwd)")
     p_replay.add_argument("--link-subagents", action="store_true",
                           help="resolve and nest Codex sub-agent child sessions")
+    p_replay.add_argument("--sessions-dir", default=None,
+                          help="sessions root for --compare-prev / --link-subagents (auto by default)")
 
     p_diff = sub.add_parser("diff", help="diff two runs' seed prompts")
     p_diff.add_argument("a")
@@ -34,8 +39,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.cmd == "replay":
-        trace = load(args.path, link_subagents=args.link_subagents)
-        other = load(args.compare) if args.compare else None
+        trace = load(args.path, link_subagents=args.link_subagents,
+                     sessions_dir=args.sessions_dir)
+        other = None
+        if args.compare:
+            other = load(args.compare)
+        elif args.compare_prev:
+            prev = find_previous_session(args.path, sessions_dir=args.sessions_dir)
+            other = load(prev) if prev else None
         render_to_file(trace, args.out, compare_to=other)
     elif args.cmd == "diff":
         Path(args.out).write_text(diff(load(args.a), load(args.b)), encoding="utf-8")

@@ -237,6 +237,58 @@ def parse_rollout_file(path: str) -> Trace:
         return parse_rollout(f)
 
 
+def _session_info(path: str) -> tuple[str, str | None]:
+    """(timestamp, cwd) from a rollout's session_meta; ('', None) if unreadable."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                o = json.loads(line)
+                if o.get("type") == "session_meta":
+                    p = o.get("payload") or {}
+                    return (p.get("timestamp") or "", p.get("cwd"))
+                return ("", None)
+    except (OSError, ValueError):
+        return ("", None)
+    return ("", None)
+
+
+def _sessions_root(path: str) -> str:
+    import os
+    p = os.path.abspath(path)
+    parts = p.split(os.sep)
+    if "sessions" in parts:
+        return os.sep.join(parts[:parts.index("sessions") + 1])
+    return os.path.dirname(p)
+
+
+def find_previous_session(path: str, *, sessions_dir: str | None = None,
+                          same_cwd: bool = True) -> str | None:
+    """The rollout file immediately before `path` in time — by default scoped to
+    the same project (cwd). Returns its path, or None if there is no earlier
+    session. Useful as the baseline for an automatic prompt-diff."""
+    import glob
+    import os
+    root = sessions_dir or _sessions_root(path)
+    cur_ts, cur_cwd = _session_info(path)
+    cur_abs = os.path.abspath(path)
+    best = None
+    best_ts = None
+    for fp in glob.glob(os.path.join(root, "**", "*.jsonl"), recursive=True):
+        if os.path.abspath(fp) == cur_abs:
+            continue
+        ts, cwd = _session_info(fp)
+        if not ts or (cur_ts and ts >= cur_ts):
+            continue
+        if same_cwd and cur_cwd and cwd != cur_cwd:
+            continue
+        if best_ts is None or ts > best_ts:
+            best_ts, best = ts, fp
+    return best
+
+
 def _first_session_id(path: str) -> str | None:
     """The thread id a rollout file belongs to (session_meta.id, which for a
     sub-agent file is the child thread id)."""
