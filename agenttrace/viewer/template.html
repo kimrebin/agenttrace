@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>agenttrace</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb;
+    --reason: #7c3aed; --call: #2563eb; --result: #0f766e; --error: #dc2626;
+    --card: #f9fafb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --fg: #e5e7eb; --muted: #9ca3af; --line: #26272b;
+      --reason: #a78bfa; --call: #60a5fa; --result: #5eead4; --error: #f87171;
+      --card: #16181d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { padding: 16px; border-bottom: 1px solid var(--line); }
+  header h1 { margin: 0 0 4px; font-size: 18px; }
+  .meta { color: var(--muted); font-size: 13px; }
+  .incomplete { color: var(--error); font-weight: 600; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  details.seed { margin-bottom: 16px; }
+  details.seed pre { white-space: pre-wrap; background: var(--card);
+                     padding: 10px; border-radius: 6px; border: 1px solid var(--line); }
+  .turn { border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; overflow: hidden; }
+  .turn-head { padding: 10px 14px; background: var(--card); cursor: pointer;
+               font-weight: 600; user-select: none; }
+  .turn.collapsed .turn-body { display: none; }
+  .turn-body { padding: 8px 14px; }
+  .event { padding: 8px 0; border-top: 1px solid var(--line); }
+  .event:first-child { border-top: none; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700;
+           padding: 2px 7px; border-radius: 999px; margin-bottom: 4px; color: #fff; }
+  .badge-reason { background: var(--reason); }
+  .badge-call { background: var(--call); }
+  .badge-meta { background: var(--muted); }
+  .badge-error { background: var(--error); }
+  .text { white-space: pre-wrap; }
+  .muted { color: var(--muted); }
+  .notice { color: var(--muted); font-style: italic; padding: 6px 0; }
+  details.result summary { cursor: pointer; color: var(--result); font-weight: 600; }
+  pre.output { white-space: pre-wrap; background: var(--card); padding: 8px;
+               border-radius: 6px; border: 1px solid var(--line); margin: 6px 0 0; }
+  .diff-col { display: inline-block; vertical-align: top; width: 49%; }
+  .diff-add { background: rgba(34,197,94,0.18); }
+  .diff-del { background: rgba(239,68,68,0.18); }
+</style>
+</head>
+<body>
+<header>
+  <h1>agenttrace</h1>
+  <div class="meta" id="runmeta"></div>
+</header>
+<main id="timeline"></main>
+<script>
+const TRACE = __TRACE_JSON__;
+
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
+
+function renderEvent(ev) {
+  const row = el("div", "event ev-" + ev.type);
+  const d = ev.data || {};
+  if (ev.type === "reasoning") {
+    row.appendChild(el("span", "badge badge-reason", "요약"));
+    row.appendChild(el("div", "text", d.text || ""));
+  } else if (ev.type === "tool_call") {
+    row.appendChild(el("span", "badge badge-call", "도구 호출"));
+    row.appendChild(el("div", "text", (d.name || "") + "  " + (d.arguments || "")));
+  } else if (ev.type === "tool_result") {
+    const det = document.createElement("details");
+    det.className = "result";
+    det.appendChild(el("summary", null, "도구 결과"));
+    det.appendChild(el("pre", "output", d.output || ""));
+    row.appendChild(det);
+  } else if (ev.type === "error") {
+    row.appendChild(el("span", "badge badge-error", "에러"));
+    row.appendChild(el("div", "text", JSON.stringify(d)));
+  } else {
+    row.appendChild(el("span", "badge badge-meta", ev.type));
+    row.appendChild(el("div", "text muted", d.note || JSON.stringify(d)));
+  }
+  return row;
+}
+
+function renderTrace(trace) {
+  const rm = document.getElementById("runmeta");
+  rm.appendChild(el("span", null,
+    "run: " + (trace.run_id || "(none)") + "  ·  agent: " + trace.agent));
+  if (trace.incomplete) rm.appendChild(el("span", "incomplete", "  ·  INCOMPLETE"));
+
+  const tl = document.getElementById("timeline");
+
+  const seed = trace.seed || {};
+  const seedDet = document.createElement("details");
+  seedDet.className = "seed";
+  seedDet.appendChild(el("summary", null, "seed 프롬프트"));
+  if (seed.system_prompt) seedDet.appendChild(el("pre", null, "system:\n" + seed.system_prompt));
+  seedDet.appendChild(el("pre", null, "user:\n" + (seed.user_input || "")));
+  tl.appendChild(seedDet);
+
+  (trace.turns || []).forEach(function (turn) {
+    const block = el("section", "turn");
+    const head = el("div", "turn-head", "Turn " + turn.seq);
+    head.addEventListener("click", function () { block.classList.toggle("collapsed"); });
+    block.appendChild(head);
+    const body = el("div", "turn-body");
+    const hasReasoning = (turn.events || []).some(function (e) { return e.type === "reasoning"; });
+    if (!hasReasoning) body.appendChild(el("div", "notice", "추론 요약 없음"));
+    (turn.events || []).forEach(function (ev) { body.appendChild(renderEvent(ev)); });
+    block.appendChild(body);
+    tl.appendChild(block);
+  });
+}
+
+renderTrace(TRACE);
+</script>
+</body>
+</html>

@@ -4,5 +4,7 @@ from agenttrace.model import Trace, Turn, Event
 from agenttrace.adapters.codex import load
 from agenttrace.collector import Collector
 from agenttrace.runner import run_codex
+from agenttrace.render import render, render_to_file
 
-__all__ = ["Trace", "Turn", "Event", "load", "Collector", "run_codex"]
+__all__ = ["Trace", "Turn", "Event", "load", "Collector", "run_codex",
+           "render", "render_to_file"]
