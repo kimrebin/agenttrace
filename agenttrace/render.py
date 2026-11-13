@@ -31,6 +31,17 @@ def render_to_file(trace: Trace, path: str) -> None:
     Path(path).write_text(render(trace), encoding="utf-8")
 
 
+def render_iframe(trace: Trace, *, height: str = "600px",
+                  title: str = "agenttrace") -> str:
+    """Return a ready-to-embed `<iframe srcdoc=...>` snippet for dropping the
+    trace into one panel of a host web dashboard. The full self-contained
+    document is HTML-escaped into the `srcdoc` attribute, so it is style- and
+    script-isolated from the host page and needs no separate file."""
+    doc = html.escape(render(trace), quote=True)
+    return ('<iframe title="%s" style="width:100%%;height:%s;border:0" '
+            'srcdoc="%s"></iframe>' % (html.escape(title, quote=True), height, doc))
+
+
 _DIFF_DOC = """<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">

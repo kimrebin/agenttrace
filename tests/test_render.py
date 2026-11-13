@@ -50,6 +50,17 @@ def test_render_has_flow_spine_and_summary():
     assert 'border-left' in html       # carded cells with a colored accent
 
 
+def test_render_iframe_embeds_escaped_doc():
+    from agenttrace import render_iframe
+    snip = render_iframe(_sample_trace(), height="400px")
+    assert snip.startswith("<iframe")
+    assert 'srcdoc="' in snip and "height:400px" in snip
+    # the inner document is escaped so its markup/quotes cannot break the attribute
+    assert "<!doctype html>" not in snip
+    assert "&lt;!doctype html&gt;" in snip
+    assert "hello" in snip                      # reasoning text survives (no special chars)
+
+
 def test_render_to_file_is_utf8(tmp_path):
     p = tmp_path / "out.html"
     render_to_file(_trace_with_reasoning_text("한국어 요약"), str(p))
