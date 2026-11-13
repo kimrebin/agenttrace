@@ -40,6 +40,14 @@ def test_render_shows_no_reasoning_notice():
     assert "추론 요약 없음" in render(tr)
 
 
+def test_render_has_flow_spine_and_summary():
+    # the viewer builds DOM client-side, so check the static markers:
+    html = render(_sample_trace())
+    assert 'id="summary"' in html      # top summary bar element
+    assert '.flow' in html             # vertical flow-spine styles
+    assert 'renderFlow' in html        # flow builder present
+
+
 def test_render_to_file_is_utf8(tmp_path):
     p = tmp_path / "out.html"
     render_to_file(_trace_with_reasoning_text("한국어 요약"), str(p))

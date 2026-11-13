@@ -6,56 +6,79 @@
 <title>agenttrace</title>
 <style>
   :root {
-    --bg: #ffffff; --fg: #1a1a1a; --muted: #6b7280; --line: #e5e7eb;
-    --reason: #7c3aed; --call: #2563eb; --result: #0f766e; --error: #dc2626;
-    --card: #f9fafb;
+    --bg:#ffffff; --fg:#1a1a1a; --muted:#6b7280; --line:#e5e7eb; --card:#f9fafb;
+    --thought:#7c3aed; --answer:#2563eb; --comment:#0891b2; --tool:#d97706;
+    --result:#0f766e; --error:#dc2626;
   }
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1115; --fg: #e5e7eb; --muted: #9ca3af; --line: #26272b;
-      --reason: #a78bfa; --call: #60a5fa; --result: #5eead4; --error: #f87171;
-      --card: #16181d;
+      --bg:#0f1115; --fg:#e5e7eb; --muted:#9ca3af; --line:#26272b; --card:#16181d;
+      --thought:#a78bfa; --answer:#60a5fa; --comment:#22d3ee; --tool:#fbbf24;
+      --result:#5eead4; --error:#f87171;
     }
   }
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--fg);
-         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-  header { padding: 16px; border-bottom: 1px solid var(--line); }
-  header h1 { margin: 0 0 4px; font-size: 18px; }
-  .meta { color: var(--muted); font-size: 13px; }
-  .incomplete { color: var(--error); font-weight: 600; }
-  main { max-width: 900px; margin: 0 auto; padding: 16px; }
-  details.seed { margin-bottom: 16px; }
-  details.seed pre { white-space: pre-wrap; background: var(--card);
-                     padding: 10px; border-radius: 6px; border: 1px solid var(--line); }
-  .turn { border: 1px solid var(--line); border-radius: 8px; margin: 12px 0; overflow: hidden; }
-  .turn-head { padding: 10px 14px; background: var(--card); cursor: pointer;
-               font-weight: 600; user-select: none; }
-  .turn.collapsed .turn-body { display: none; }
-  .turn-body { padding: 8px 14px; }
-  .event { padding: 8px 0; border-top: 1px solid var(--line); }
-  .event:first-child { border-top: none; }
-  .badge { display: inline-block; font-size: 11px; font-weight: 700;
-           padding: 2px 7px; border-radius: 999px; margin-bottom: 4px; color: #fff; }
-  .badge-reason { background: var(--reason); }
-  .badge-call { background: var(--call); }
-  .badge-meta { background: var(--muted); }
-  .badge-error { background: var(--error); }
-  .text { white-space: pre-wrap; }
-  .muted { color: var(--muted); }
-  .notice { color: var(--muted); font-style: italic; padding: 6px 0; }
-  details.result summary { cursor: pointer; color: var(--result); font-weight: 600; }
-  pre.output { white-space: pre-wrap; background: var(--card); padding: 8px;
-               border-radius: 6px; border: 1px solid var(--line); margin: 6px 0 0; }
-  .diff-col { display: inline-block; vertical-align: top; width: 49%; }
-  .diff-add { background: rgba(34,197,94,0.18); }
-  .diff-del { background: rgba(239,68,68,0.18); }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg);
+         font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  header { padding:14px 16px; border-bottom:1px solid var(--line);
+           position:sticky; top:0; background:var(--bg); z-index:5; }
+  header h1 { margin:0; font-size:17px; }
+  #summary { margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; font-size:12px; }
+  #summary .pill { padding:2px 9px; border-radius:999px; border:1px solid var(--line);
+                   color:var(--muted); }
+  #summary .pill b { color:var(--fg); }
+  .incomplete { color:var(--error); font-weight:700; }
+  main { max-width:860px; margin:0 auto; padding:16px; }
+  details.seed { margin-bottom:14px; }
+  details.seed pre { white-space:pre-wrap; background:var(--card); padding:10px;
+                     border:1px solid var(--line); border-radius:6px; }
+  .turn { margin:14px 0; }
+  .turn-head { font-weight:700; cursor:pointer; user-select:none; padding:6px 0;
+               border-bottom:1px solid var(--line); }
+  .turn-head::before { content:"▾ "; color:var(--muted); }
+  .turn.collapsed .turn-head::before { content:"▸ "; }
+  .turn.collapsed .flow { display:none; }
+
+  /* vertical flow spine */
+  .flow { position:relative; margin:10px 0 0; padding-left:34px; }
+  .flow::before { content:""; position:absolute; left:15px; top:4px; bottom:4px;
+                  width:2px; background:var(--line); }
+  .node { position:relative; margin:0 0 14px; }
+  .node:last-child { margin-bottom:4px; }
+  .node .dot { position:absolute; left:-27px; top:3px; width:16px; height:16px;
+               border-radius:50%; background:var(--bg); border:3px solid var(--muted); }
+  .node.thought .dot { border-color:var(--thought); }
+  .node.answer  .dot { border-color:var(--answer); }
+  .node.comment .dot { border-color:var(--comment); }
+  .node.action  .dot { border-color:var(--tool); }
+  .node.action.err .dot, .node.error .dot { border-color:var(--error); }
+  .badge { display:inline-block; font-size:11px; font-weight:700; padding:1px 8px;
+           border-radius:999px; color:#fff; margin-bottom:5px; }
+  .b-thought { background:var(--thought); }
+  .b-answer  { background:var(--answer); }
+  .b-comment { background:var(--comment); }
+  .b-tool    { background:var(--tool); }
+  .b-error   { background:var(--error); }
+  .b-meta    { background:var(--muted); }
+  .text { white-space:pre-wrap; }
+  .muted { color:var(--muted); }
+  .notice { color:var(--muted); font-style:italic; margin:4px 0 10px; }
+  .cmd { font-family:ui-monospace,monospace; background:var(--card);
+         border:1px solid var(--line); border-radius:6px; padding:6px 8px; margin-top:2px;
+         white-space:pre-wrap; }
+  details.out summary { cursor:pointer; color:var(--result); font-size:13px; margin-top:4px; }
+  .node.action.err details.out summary { color:var(--error); }
+  pre.out { white-space:pre-wrap; background:var(--card); border:1px solid var(--line);
+            border-radius:6px; padding:8px; margin:5px 0 0; max-height:320px; overflow:auto; }
+  .diff-col { display:inline-block; vertical-align:top; width:49%; }
+  .diff-add { background:rgba(34,197,94,0.18); }
+  .diff-del { background:rgba(239,68,68,0.18); }
 </style>
 </head>
 <body>
 <header>
   <h1>agenttrace</h1>
-  <div class="meta" id="runmeta"></div>
+  <div id="summary"></div>
 </header>
 <main id="timeline"></main>
 <script>
@@ -67,59 +90,115 @@ function el(tag, cls, text) {
   if (text != null) e.textContent = text;
   return e;
 }
+function pill(label, n) {
+  const p = el("span", "pill");
+  p.appendChild(el("span", null, label + " "));
+  p.appendChild(el("b", null, String(n)));
+  return p;
+}
+function card(node, badgeCls, badgeText, bodyText) {
+  node.appendChild(el("span", "badge " + badgeCls, badgeText));
+  if (bodyText != null) node.appendChild(el("div", "text", bodyText));
+  return node;
+}
+function outputBlock(label, text) {
+  const det = document.createElement("details");
+  det.className = "out";
+  det.appendChild(el("summary", null, label));
+  det.appendChild(el("pre", "out", text || ""));
+  return det;
+}
 
-function renderEvent(ev) {
-  const row = el("div", "event ev-" + ev.type);
-  const d = ev.data || {};
-  if (ev.type === "reasoning") {
-    row.appendChild(el("span", "badge badge-reason", "요약"));
-    row.appendChild(el("div", "text", d.text || ""));
-  } else if (ev.type === "tool_call") {
-    row.appendChild(el("span", "badge badge-call", "도구 호출"));
-    row.appendChild(el("div", "text", (d.name || "") + "  " + (d.arguments || "")));
-  } else if (ev.type === "tool_result") {
-    const det = document.createElement("details");
-    det.className = "result";
-    det.appendChild(el("summary", null, "도구 결과"));
-    det.appendChild(el("pre", "output", d.output || ""));
-    row.appendChild(det);
-  } else if (ev.type === "error") {
-    row.appendChild(el("span", "badge badge-error", "에러"));
-    row.appendChild(el("div", "text", JSON.stringify(d)));
-  } else {
-    row.appendChild(el("span", "badge badge-meta", d.item_type || ev.type));
-    const info = d.note || (ev.raw ? JSON.stringify(ev.raw) : JSON.stringify(d));
-    row.appendChild(el("div", "text muted", info));
+// reasoning with a role is a spoken message; without one it is the CoT summary
+function reasoningKind(ev) {
+  const role = (ev.data || {}).role;
+  if (role === "assistant") return ["answer", "b-answer", "답변"];
+  if (role === "agent_message") return ["comment", "b-comment", "코멘터리"];
+  return ["thought", "b-thought", "요약"];        // CoT summary
+}
+
+function renderFlow(events) {
+  const flow = el("div", "flow");
+  for (let i = 0; i < events.length; i++) {
+    const ev = events[i];
+    if (ev.type === "reasoning") {
+      const [cls, badge, label] = reasoningKind(ev);
+      flow.appendChild(card(el("div", "node " + cls), badge, label, (ev.data || {}).text || ""));
+    } else if (ev.type === "tool_call") {
+      // pair a call with the result/error that immediately follows it
+      const next = events[i + 1];
+      const paired = next && (next.type === "tool_result" || next.type === "error");
+      const isErr = paired && next.type === "error";
+      const node = el("div", "node action" + (isErr ? " err" : ""));
+      node.appendChild(el("span", "badge b-tool", isErr ? "도구 (실패)" : "도구"));
+      const d = ev.data || {};
+      node.appendChild(el("div", "cmd", (d.name || "") + " " + (d.arguments || "")));
+      if (paired) {
+        const nd = next.data || {};
+        const code = nd.exit_code;
+        const label = (code !== undefined && code !== null)
+          ? "결과 (exit " + code + ")" : "결과";
+        node.appendChild(outputBlock(label, nd.output || ""));
+        i++; // consumed the paired event
+      }
+      flow.appendChild(node);
+    } else if (ev.type === "tool_result") {
+      const node = el("div", "node action");
+      node.appendChild(outputBlock("도구 결과", (ev.data || {}).output || ""));
+      flow.appendChild(node);
+    } else if (ev.type === "error") {
+      const node = el("div", "node error");
+      node.appendChild(el("span", "badge b-error", "에러"));
+      const d = ev.data || {};
+      node.appendChild(el("div", "text", d.message || d.output || JSON.stringify(d)));
+      flow.appendChild(node);
+    } else {
+      const node = el("div", "node");
+      const d = ev.data || {};
+      node.appendChild(el("span", "badge b-meta", d.item_type || ev.type));
+      node.appendChild(el("div", "text muted", d.note || (ev.raw ? JSON.stringify(ev.raw) : "")));
+      flow.appendChild(node);
+    }
   }
-  return row;
+  return flow;
 }
 
 function renderTrace(trace) {
-  const rm = document.getElementById("runmeta");
-  rm.appendChild(el("span", null,
-    "run: " + (trace.run_id || "(none)") + "  ·  agent: " + trace.agent));
-  if (trace.incomplete) rm.appendChild(el("span", "incomplete", "  ·  INCOMPLETE"));
+  // summary bar
+  let thoughts = 0, answers = 0, tools = 0, errors = 0;
+  (trace.turns || []).forEach(function (t) {
+    (t.events || []).forEach(function (e) {
+      if (e.type === "reasoning") {
+        if ((e.data || {}).role) answers++; else thoughts++;
+      } else if (e.type === "tool_call") tools++;
+      else if (e.type === "error") errors++;
+    });
+  });
+  const sum = document.getElementById("summary");
+  sum.appendChild(pill("run", trace.run_id || "(none)"));
+  sum.appendChild(pill("추론", thoughts));
+  sum.appendChild(pill("답변", answers));
+  sum.appendChild(pill("도구", tools));
+  sum.appendChild(pill("에러", errors));
+  if (trace.incomplete) sum.appendChild(el("span", "pill incomplete", "INCOMPLETE"));
 
   const tl = document.getElementById("timeline");
-
   const seed = trace.seed || {};
-  const seedDet = document.createElement("details");
-  seedDet.className = "seed";
-  seedDet.appendChild(el("summary", null, "seed 프롬프트"));
-  if (seed.system_prompt) seedDet.appendChild(el("pre", null, "system:\n" + seed.system_prompt));
-  seedDet.appendChild(el("pre", null, "user:\n" + (seed.user_input || "")));
-  tl.appendChild(seedDet);
+  const sd = document.createElement("details");
+  sd.className = "seed";
+  sd.appendChild(el("summary", null, "seed 프롬프트"));
+  if (seed.system_prompt) sd.appendChild(el("pre", null, "system:\n" + seed.system_prompt));
+  sd.appendChild(el("pre", null, "user:\n" + (seed.user_input || "")));
+  tl.appendChild(sd);
 
   (trace.turns || []).forEach(function (turn) {
     const block = el("section", "turn");
     const head = el("div", "turn-head", "Turn " + turn.seq);
     head.addEventListener("click", function () { block.classList.toggle("collapsed"); });
     block.appendChild(head);
-    const body = el("div", "turn-body");
     const hasReasoning = (turn.events || []).some(function (e) { return e.type === "reasoning"; });
-    if (!hasReasoning) body.appendChild(el("div", "notice", "추론 요약 없음"));
-    (turn.events || []).forEach(function (ev) { body.appendChild(renderEvent(ev)); });
-    block.appendChild(body);
+    if (!hasReasoning) block.appendChild(el("div", "notice", "추론 요약 없음"));
+    block.appendChild(renderFlow(turn.events || []));
     tl.appendChild(block);
   });
 }
