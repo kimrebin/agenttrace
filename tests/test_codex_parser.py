@@ -31,6 +31,14 @@ def test_unknown_item_type_preserved():
     assert ev.type == "unknown" and ev.raw["item"]["type"] == "future_thing"
 
 
+def test_unknown_item_surfaces_type_in_data():
+    lines = ['{"type":"turn.started"}',
+             '{"type":"item.completed","item":{"type":"web_search","query":"x"}}']
+    tr = parse_stream(lines)
+    ev = tr.turns[0].events[-1]
+    assert ev.type == "unknown" and ev.data["item_type"] == "web_search"
+
+
 def test_truncated_stream_marks_incomplete():
     lines = ['{"type":"thread.started","thread_id":"x"}', '{"type":"turn.started"}']
     tr = parse_stream(lines)

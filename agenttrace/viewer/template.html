@@ -87,8 +87,9 @@ function renderEvent(ev) {
     row.appendChild(el("span", "badge badge-error", "에러"));
     row.appendChild(el("div", "text", JSON.stringify(d)));
   } else {
-    row.appendChild(el("span", "badge badge-meta", ev.type));
-    row.appendChild(el("div", "text muted", d.note || JSON.stringify(d)));
+    row.appendChild(el("span", "badge badge-meta", d.item_type || ev.type));
+    const info = d.note || (ev.raw ? JSON.stringify(ev.raw) : JSON.stringify(d));
+    row.appendChild(el("div", "text muted", info));
   }
   return row;
 }

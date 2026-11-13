@@ -67,6 +67,8 @@ class CodexStreamParser:
         elif etype == "item.started":
             # streaming start half of an item.completed; ignore the duplicate
             return
+        elif etype == "error" or (etype and "fail" in etype):
+            self._add_event("error", {"message": obj.get("message", "")}, raw=obj)
         # anything else: preserve without crashing
         else:
             self._add_event("meta", {"note": str(etype)}, raw=obj)
@@ -83,11 +85,20 @@ class CodexStreamParser:
             self._add_event("tool_call",
                             {"name": "command_execution",
                              "arguments": item.get("command", "")})
-            self._add_event("tool_result",
-                            {"output": item.get("aggregated_output", ""),
-                             "exit_code": item.get("exit_code")})
+            exit_code = item.get("exit_code")
+            out = {"name": "command_execution",
+                   "output": item.get("aggregated_output", ""),
+                   "exit_code": exit_code}
+            # a non-zero exit is a failure — surface it as an emphasized error
+            if exit_code not in (None, 0):
+                self._add_event("error", out)
+            else:
+                self._add_event("tool_result",
+                                {"output": item.get("aggregated_output", ""),
+                                 "exit_code": exit_code})
         else:
-            self._add_event("unknown", {}, raw={"item": item})
+            self._add_event("unknown", {"item_type": item.get("type")},
+                            raw={"item": item})
 
     def finish(self) -> Trace:
         self._trace.incomplete = self._turn_open
