@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.html
+!agenttrace/viewer/template.html
+.superpowers/
+sample.html
