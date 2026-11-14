@@ -64,10 +64,11 @@ _DIFF_DOC = """<!doctype html>
   @media (prefers-color-scheme: dark) { body { background: #0d0f13; color: #f4f6f8; } }
   h1 { font-size: 18px; padding: 16px 16px 0; }
   .cols { display: flex; gap: 2%; padding: 16px; }
-  .diff-col { width: 49%; }
+  .diff-col { width: 49%; min-width: 0; }
   .diff-col h3 { margin: 0 0 8px; font-size: 13px; font-weight: 700; color: #4b5563; }
   @media (prefers-color-scheme: dark) { .diff-col h3 { color: #aeb6c2; } }
-  .diff-col > div { white-space: pre-wrap; padding: 2px 5px; border-radius: 3px;
+  .diff-col > div { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word;
+                    padding: 2px 5px; border-radius: 3px;
                     font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
                     font-size: 13px; font-weight: 500; }
   .diff-add { background: rgba(22,163,74,0.30); }

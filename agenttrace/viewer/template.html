@@ -35,7 +35,7 @@
                padding:9px 11px; margin-top:8px; }
   .seedlabel { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
                color:var(--answer); margin-bottom:4px; }
-  .md { color:var(--fg); font-weight:500; }
+  .md { color:var(--fg); font-weight:500; overflow-wrap:anywhere; }
   .turn { margin:14px 0; }
   .turn-head { font-weight:700; cursor:pointer; user-select:none; padding:6px 0;
                border-bottom:1px solid var(--line); }
@@ -77,20 +77,20 @@
   .b-tool    { background:var(--tool); }
   .b-error   { background:var(--error); }
   .b-meta    { background:var(--muted); }
-  .text { color:var(--fg); font-weight:500; }
+  .text { color:var(--fg); font-weight:500; overflow-wrap:anywhere; }
   .muted { color:var(--muted); }
   .notice { color:var(--muted); font-style:italic; margin:4px 0 10px; }
   .cmd { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
          font-size:13px; font-weight:500; color:var(--fg); background:var(--bg);
          border:1px solid var(--line); border-radius:6px; padding:7px 9px; margin-top:2px;
-         white-space:pre-wrap; }
+         white-space:pre-wrap; overflow-wrap:anywhere; }
   details.out summary { cursor:pointer; color:var(--result); font-size:13px;
                         font-weight:600; margin-top:5px; }
   .node.action.err details.out summary { color:var(--error); }
   pre.out { font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
             font-size:13px; font-weight:500; color:var(--fg); white-space:pre-wrap;
-            background:var(--bg); border:1px solid var(--line); border-radius:6px;
-            padding:9px; margin:6px 0 0; max-height:320px; overflow:auto; }
+            overflow-wrap:anywhere; background:var(--bg); border:1px solid var(--line);
+            border-radius:6px; padding:9px; margin:6px 0 0; max-height:320px; overflow:auto; }
   .subtrace { margin-top:10px; padding:8px 10px 2px; border:1px dashed var(--line);
               border-radius:8px; }
   .sublabel { font-size:12px; font-weight:700; color:var(--thought); margin-bottom:6px; }
@@ -98,9 +98,10 @@
                       background:var(--card); }
   details.diffpanel > summary { cursor:pointer; font-weight:700; padding:10px 12px; }
   details.diffpanel .cols { display:flex; gap:2%; padding:0 12px 12px; }
-  .diff-col { display:inline-block; vertical-align:top; width:49%; }
+  .diff-col { vertical-align:top; width:49%; min-width:0; }
   .diff-col h3 { margin:0 0 6px; font-size:12px; font-weight:700; color:var(--muted); }
-  .diff-col > div { white-space:pre-wrap; padding:2px 5px; border-radius:3px; font-weight:500;
+  .diff-col > div { white-space:pre-wrap; overflow-wrap:anywhere; word-break:break-word;
+                    padding:2px 5px; border-radius:3px; font-weight:500;
                     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:13px; }
   .diff-add { background:rgba(22,163,74,0.30); }
   .diff-del { background:rgba(220,38,38,0.30); }
